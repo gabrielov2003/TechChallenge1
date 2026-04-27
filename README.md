@@ -41,6 +41,7 @@ A maneira mais rápida e recomendada de executar a aplicação é utilizando o *
     docker-compose up --build
     ```
 4.  **Acesso à API**: O servidor estará disponível em `http://localhost:5000`.
+5. Para fazer requisições, você precisa primeiro fazer um GET na rota http://localhost:5000/api/login que irá retornar um TOKEN, este deve ser passado em todas as requisições no headers da seguinte maneira: Authorization=Bearer token_retornado
 
 *Nota: O banco de dados `database.db` será criado automaticamente na primeira execução através do script de infraestrutura integrado ao `app.py`.*
 
