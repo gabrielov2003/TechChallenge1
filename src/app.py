@@ -1,24 +1,30 @@
-from flask import Flask, jsonify
-import sqlite3
+from flask import Flask
+from flasgger import Swagger
+from flask_jwt_extended import JWTManager
+from infrastructure import Infrastructure
+from web import api
+import os
 
-app = Flask(__name__)
 
-def get_db_connection():
-    conn = sqlite3.connect('database.db')
-    conn.row_factory = sqlite3.Row
-    return conn
+def create_app():
+    app = Flask(__name__)
+    app.config['SWAGGER'] = {
+        'title': 'API Oficina',
+        'uiversion': 3
+    }
+    app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'fiap-soat-key')
+    print(os.getenv('JWT_SECRET_KEY', 'fiap-soat-key'))
 
-@app.route('/')
-def home():
-    return "API rodando 🚀"
+    JWTManager(app)
+    Swagger(app)
 
-@app.route('/usuarios')
-def listar_usuarios():
-    conn = get_db_connection()
-    usuarios = conn.execute('SELECT * FROM usuarios').fetchall()
-    conn.close()
+    Infrastructure.init_db()
 
-    return jsonify([dict(u) for u in usuarios])
+    app.register_blueprint(api, url_prefix='/api')
+
+    return app
+
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app = create_app()
+    app.run(host='0.0.0.0', port=5000, debug=True)

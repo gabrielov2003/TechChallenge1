@@ -11,4 +11,4 @@ services:
     environment:
       - FLASK_ENV=development
       - DATABASE_URL=sqlite:///data/oficina.db
-      - JWT_SECRET=sua_chave_secreta_aqui
+      - JWT_SECRET_KEY="lets-rock-the-future-123"
