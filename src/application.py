@@ -61,10 +61,10 @@ class OficinaAppService:
         if df_os.empty:
             return None
 
-        os_dominio = OrdemServico(id_cliente=int(df_os['id_cliente'].iloc),
-                                  id_veiculo=int(df_os['id_veiculo'].iloc),
+        os_dominio = OrdemServico(id_cliente=int(df_os['id_cliente'][0]),
+                                  id_veiculo=int(df_os['id_veiculo'][0]),
                                   id_os=id_os,
-                                  status=df_os['status'].iloc)
+                                  status=df_os['status'][0])
 
         df_pecas = Infrastructure.fetch_pandas("SELECT * FROM Pecas_carro WHERE id_os = ?", (id_os,))
         df_servicos = Infrastructure.fetch_pandas("SELECT * FROM Servicos_carro WHERE id_os = ?", (id_os,))
@@ -83,6 +83,8 @@ class OficinaAppService:
 
         return {
             "id_os": os_dominio.id_os,
+            "id_veiculo": os_dominio.id_veiculo,
+            "id_cliente": os_dominio.id_cliente,
             "status": os_dominio.status,
             "total_orcamento": valor_total,
             "detalhes": {

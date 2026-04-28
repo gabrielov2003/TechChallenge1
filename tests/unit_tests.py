@@ -1,0 +1,214 @@
+import unittest
+import json
+import random
+import string
+import sys
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+
+from app import create_app
+
+
+def gerar_cpf():
+    def calc_digito(cpf, peso):
+        soma = sum(int(cpf[i]) * (peso - i) for i in range(len(cpf)))
+        resto = (soma * 10) % 11
+        return resto if resto < 10 else 0
+
+    cpf = [random.randint(0, 9) for _ in range(9)]
+    cpf.append(calc_digito(cpf, 10))
+    cpf.append(calc_digito(cpf, 11))
+    return ''.join(map(str, cpf))
+
+
+def gerar_placa():
+    letras = string.ascii_uppercase
+    return (
+        random.choice(letras) +
+        random.choice(letras) +
+        random.choice(letras) +
+        str(random.randint(1, 8)) +
+        random.choice(letras) +
+        str(random.randint(1, 8)) +
+        str(random.randint(1, 8))
+    )
+
+
+class TestAPI(unittest.TestCase):
+
+    def setUp(self):
+        app = create_app()
+        app.config['TESTING'] = True
+        self.client = app.test_client()
+
+        # Login
+        response = self.client.get('/api/login')
+        self.token = response.get_json()['access_token']
+
+        self.headers = {
+            'Authorization': f'Bearer {self.token}',
+            'Content-Type': 'application/json'
+        }
+
+    def criar_cliente(self):
+        cpf = gerar_cpf()
+        response = self.client.post(
+            '/api/clientes',
+            headers=self.headers,
+            data=json.dumps({
+                "documento": cpf,
+                "nome": "Gabriel Vieira"
+            })
+        )
+        return cpf, response.get_json()['id_cliente']
+
+    def criar_veiculo(self):
+        placa = gerar_placa()
+        response = self.client.post(
+            '/api/veiculos',
+            headers=self.headers,
+            data=json.dumps({
+                "ano": 2022,
+                "marca": "Toyota",
+                "modelo": "Corolla",
+                "placa": placa
+            })
+        )
+        return placa, response.get_json()['id_veiculo']
+
+    def criar_os(self, id_cliente, id_veiculo):
+        response = self.client.post(
+            '/api/os',
+            headers=self.headers,
+            data=json.dumps({
+                "id_cliente": id_cliente,
+                "id_veiculo": id_veiculo
+            })
+        )
+        return response.get_json()['id_os']
+
+
+    def test_login(self):
+        response = self.client.get('/api/login')
+        self.assertEqual(response.status_code, 200)
+
+    def test_criar_cliente(self):
+        cpf, _ = self.criar_cliente()
+        self.assertIsNotNone(cpf)
+
+    def test_buscar_cliente(self):
+        cpf, _ = self.criar_cliente()
+
+        response = self.client.get(
+            f'/api/clientes/documento/{cpf}',
+            headers=self.headers
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_criar_veiculo(self):
+        _, id_veiculo = self.criar_veiculo()
+        self.assertIsNotNone(id_veiculo)
+
+    def test_buscar_veiculo(self):
+        placa, _ = self.criar_veiculo()
+
+        response = self.client.get(
+            f'/api/veiculos/placa/{placa}',
+            headers=self.headers
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_criar_os(self):
+        _, id_cliente = self.criar_cliente()
+        _, id_veiculo = self.criar_veiculo()
+
+        id_os = self.criar_os(id_cliente, id_veiculo)
+        self.assertIsNotNone(id_os)
+
+    def test_atualizar_status(self):
+        _, id_cliente = self.criar_cliente()
+        _, id_veiculo = self.criar_veiculo()
+        id_os = self.criar_os(id_cliente, id_veiculo)
+
+        response = self.client.put(
+            f'/api/os/{id_os}/status',
+            headers=self.headers,
+            data=json.dumps({"status": "Em execução"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_adicionar_servico(self):
+        _, id_cliente = self.criar_cliente()
+        _, id_veiculo = self.criar_veiculo()
+        id_os = self.criar_os(id_cliente, id_veiculo)
+
+        response = self.client.post(
+            f'/api/os/{id_os}/servicos',
+            headers=self.headers,
+            data=json.dumps({
+                "servico": "Troca de óleo",
+                "valor_total": 150
+            })
+        )
+        self.assertEqual(response.status_code, 201)
+
+    def test_adicionar_peca(self):
+        _, id_cliente = self.criar_cliente()
+        _, id_veiculo = self.criar_veiculo()
+        id_os = self.criar_os(id_cliente, id_veiculo)
+
+        response = self.client.post(
+            f'/api/os/{id_os}/pecas',
+            headers=self.headers,
+            data=json.dumps({
+                "peca": "Filtro de óleo",
+                "valor_total": 80
+            })
+        )
+        self.assertEqual(response.status_code, 201)
+
+    def test_fluxo_completo_os(self):
+        _, id_cliente = self.criar_cliente()
+        _, id_veiculo = self.criar_veiculo()
+        id_os = self.criar_os(id_cliente, id_veiculo)
+
+        self.client.put(
+            f'/api/os/{id_os}/status',
+            headers=self.headers,
+            data=json.dumps({"status": "Em execução"})
+        )
+
+        self.client.post(
+            f'/api/os/{id_os}/servicos',
+            headers=self.headers,
+            data=json.dumps({
+                "servico": "Troca de óleo",
+                "valor_total": 150
+            })
+        )
+
+        self.client.post(
+            f'/api/os/{id_os}/pecas',
+            headers=self.headers,
+            data=json.dumps({
+                "peca": "Filtro de óleo",
+                "valor_total": 80
+            })
+        )
+
+        response = self.client.get(
+            f'/api/os/{id_os}',
+            headers=self.headers
+        )
+
+        data = response.get_json()
+
+        self.assertEqual(data["status"], "Em execução")
+        self.assertEqual(data["total_orcamento"], 230.0)
+        self.assertEqual(data["detalhes"]["servicos"][0]["servico"], "Troca de óleo")
+        self.assertEqual(data["detalhes"]["pecas"][0]["peca"], "Filtro de óleo")
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -264,14 +264,13 @@ def adicionar_peca(id_os):
     return jsonify({"mensagem": "Peça adicionada"}), 201
 
 
-# ✅ Buscar OS
-@api.route('/os/<int:id>', methods=['GET'])
+@api.route('/os/<int:id_os>', methods=['GET'])
 @jwt_required()
 @swag_from({
     'tags': ['Ordem de Serviço'],
     'description': 'Retorna os dados completos da OS',
     'parameters': [{
-        'name': 'id',
+        'name': 'id_os',
         'in': 'path',
         'type': 'integer',
         'required': True,
@@ -282,8 +281,8 @@ def adicionar_peca(id_os):
         404: {'description': 'Não encontrada'}
     }
 })
-def get_os(_id):
-    resultado = OficinaAppService.gerar_orcamento_consolidado(_id)
+def get_os(id_os):
+    resultado = OficinaAppService.gerar_orcamento_consolidado(id_os)
 
     if not resultado:
         return jsonify({"erro": "Ordem de Serviço não encontrada"}), 404
@@ -291,7 +290,6 @@ def get_os(_id):
     return jsonify(resultado), 200
 
 
-# ✅ Atualizar status
 @api.route('/os/<int:id_os>/status', methods=['PUT'])
 @jwt_required()
 @swag_from({

@@ -13,7 +13,6 @@ def create_app():
         'uiversion': 3
     }
     app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'fiap-soat-key')
-    print(os.getenv('JWT_SECRET_KEY', 'fiap-soat-key'))
 
     JWTManager(app)
     Swagger(app)

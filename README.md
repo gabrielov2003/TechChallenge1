@@ -4,7 +4,7 @@ Este projeto é o **MVP (Minimum Viable Product)** de um sistema de back-end des
 
 ## 🛠️ Tecnologias Utilizadas
 
-*   **Python 3.9+ / Flask:** Framework para criação da API RESTful.
+*   **Python 3.11+ / Flask:** Framework para criação da API RESTful.
 *   **SQLite3:** Banco de dados relacional leve.
 *   **Pandas:** Utilizado na camada de infraestrutura para manipulação eficiente de dados e geração de relatórios.
 *   **Docker & Docker Compose:** Para containerização e execução simplificada do ambiente.
@@ -63,6 +63,37 @@ O sistema gerencia o ciclo de vida completo da OS conforme definido no **Event S
 2.  **Abertura**: OS criada com status inicial **"Recebida"**.
 3.  **Diagnóstico**: O mecânico adiciona peças e serviços, e o sistema gera o orçamento automático.
 4.  **Acompanhamento**: A OS progride pelos status: *Recebida → Em diagnóstico → Aguardando aprovação → Em execução → Finalizada → Entregue*.
+
+Gabriel, aqui vai um trecho direto e pronto pra colar no seu README:
+
+---
+
+## 🧪 Testes Unitários
+
+O projeto possui testes automatizados utilizando a biblioteca padrão do Python, o `unittest`. Esses testes validam o funcionamento das principais rotas da API, incluindo:
+
+* Autenticação (`/login`)
+* Cadastro e consulta de clientes
+* Cadastro e consulta de veículos
+* Criação e atualização de Ordens de Serviço (OS)
+* Adição de serviços e peças
+* Geração do orçamento consolidado
+
+Os testes foram estruturados de forma independente, garantindo maior confiabilidade e evitando dependência entre execuções.
+
+### ▶️ Como executar os testes
+
+Na raiz do projeto, execute o comando:
+
+```bash
+python -m unittest tests/unit_tests.py
+```
+
+### ⚠️ Observações
+
+* Certifique-se de que as dependências do projeto estejam instaladas.
+* Os testes utilizam um banco SQLite local (`instance/database.db`), que será criado automaticamente caso não exista.
+* Para evitar conflitos de dados (como CPF ou placa duplicados), os testes geram valores aleatórios durante a execução.
 
 ---
 *Este projeto faz parte do Tech Challenge da Pós-Graduação em Arquitetura de Software da FIAP.*

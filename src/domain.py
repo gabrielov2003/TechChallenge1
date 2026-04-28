@@ -61,8 +61,6 @@ class OrdemServico:
         self.id_cliente = id_cliente
         self.id_veiculo = id_veiculo
         self.status = status
-        if status not in self.STATUS_FLUXO:
-            raise DomainError("Status de OS inválido")
 
 class PecasCarro:
     def __init__(self, id_os, peca, valor_total):
