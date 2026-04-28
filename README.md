@@ -95,5 +95,16 @@ python -m unittest tests/unit_tests.py
 * Os testes utilizam um banco SQLite local (`instance/database.db`), que será criado automaticamente caso não exista.
 * Para evitar conflitos de dados (como CPF ou placa duplicados), os testes geram valores aleatórios durante a execução.
 
+
+## 📊 Análise Estática de Código
+
+O projeto conta com uma análise estática realizada com **Pylint**, com o objetivo de identificar possíveis vulnerabilidades, más práticas e melhorias no código.
+
+O relatório completo pode ser encontrado no arquivo:
+
+```id="r8y6kf"
+pylint-report.txt
+```
+
 ---
 *Este projeto faz parte do Tech Challenge da Pós-Graduação em Arquitetura de Software da FIAP.*
