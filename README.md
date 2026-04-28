@@ -106,5 +106,16 @@ O relatório completo pode ser encontrado no arquivo:
 pylint-report.txt
 ```
 
+Para complementar a documentação do seu projeto e atender aos requisitos de entrega da Fase 1, você pode adicionar a seguinte seção ao seu relatório ou README, destacando a inclusão do diagrama solicitado:
+
+### **🖼️ Modelagem Estratégica e Design Orientado a Domínio (DDD)**
+
+Como parte integrante da documentação de arquitetura, foi adicionado o arquivo **`diagrama_ddd.png`**. Este documento visual apresenta a modelagem completa do sistema, dividida em duas frentes principais:
+
+*   **Event Storming:** Um mapeamento detalhado dos fluxos de **Criação e Acompanhamento de OS** e **Gestão de Peças**, identificando todos os eventos de domínio, atores (como Atendente, Mecânico e Cliente) e as interações com o sistema.
+*   **Diagrama de Domínio:** A representação das entidades core, como `Clinete`, `Veiculo` e `Ordem_Servico`, evidenciando como as regras de negócio e validações de dados sensíveis estão estruturadas conforme os padrões de DDD.
+
+O diagrama ilustra o ciclo de vida completo do atendimento, desde a **identificação do cliente** por CPF/CNPJ até a **entrega final do veículo**, garantindo que o fluxo de status (Recebida, Em diagnóstico, etc.) e a geração automática de orçamentos sigam rigorosamente os requisitos técnicos estabelecidos, e complementa o código-fonte e serve como base para a compreensão da **Linguagem Ubíqua** aplicada em todas as camadas da aplicação.
+
 ---
 *Este projeto faz parte do Tech Challenge da Pós-Graduação em Arquitetura de Software da FIAP.*
