@@ -62,7 +62,12 @@ jobs:
           echo "KUBECONFIG=/tmp/kubeconfig" >> $GITHUB_ENV
 
       - name: Apply K8s manifests
-        run: kubectl apply -f k8s/
+        env:
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          WEBHOOK_TOKEN: ${{ secrets.WEBHOOK_TOKEN }}
+        run: |
+          envsubst < k8s/secret.yaml | kubectl apply -f -
+          kubectl apply -f k8s/configmap.yaml -f k8s/pvc.yaml -f k8s/deployment.yaml -f k8s/service.yaml -f k8s/hpa.yaml
 
       - name: Update image and rollout
         run: |

@@ -182,38 +182,55 @@ class TestAPI(unittest.TestCase):
         _, id_veiculo = self.criar_veiculo()
         id_os = self.criar_os(id_cliente, id_veiculo)
 
-        for status in ["Em diagnóstico", "Aguardando aprovação", "Em execução"]:
-            self.client.put(
-                f'/api/os/{id_os}/status',
-                headers=self.headers,
-                data=json.dumps({"status": status})
-            )
-
         self.client.post(
             f'/api/os/{id_os}/servicos',
             headers=self.headers,
-            data=json.dumps({
-                "servico": "Troca de óleo",
-                "valor_total": 150
-            })
+            data=json.dumps({"servico": "Troca de óleo", "valor_total": 150})
         )
-
         self.client.post(
             f'/api/os/{id_os}/pecas',
             headers=self.headers,
-            data=json.dumps({
-                "peca": "Filtro de óleo",
-                "valor_total": 80
-            })
+            data=json.dumps({"peca": "Filtro de óleo", "valor_total": 80})
         )
 
-        response = self.client.get(f'/api/os/{id_os}')
-        data = response.get_json()
+        for status in ["Em diagnóstico", "Aguardando aprovação"]:
+            self.client.put(f'/api/os/{id_os}/status', headers=self.headers,
+                            data=json.dumps({"status": status}))
 
-        self.assertEqual(data["status"], "Em execução")
+        r = self.client.post(f'/api/os/{id_os}/aprovacao', headers=self.headers,
+                             data=json.dumps({"aprovado": True}))
+        self.assertEqual(r.status_code, 200)
+
+        for status in ["Em execução", "Finalizada", "Entregue"]:
+            r = self.client.put(f'/api/os/{id_os}/status', headers=self.headers,
+                                data=json.dumps({"status": status}))
+            self.assertEqual(r.status_code, 200)
+
+        data = self.client.get(f'/api/os/{id_os}').get_json()
+        self.assertEqual(data["status"], "Entregue")
         self.assertEqual(data["total_orcamento"], 230.0)
         self.assertEqual(data["detalhes"]["servicos"][0]["servico"], "Troca de óleo")
         self.assertEqual(data["detalhes"]["pecas"][0]["peca"], "Filtro de óleo")
+
+    def test_fluxo_com_solicitacao_alteracoes(self):
+        _, id_cliente = self.criar_cliente()
+        _, id_veiculo = self.criar_veiculo()
+        id_os = self.criar_os(id_cliente, id_veiculo)
+
+        for status in ["Em diagnóstico", "Aguardando aprovação"]:
+            self.client.put(f'/api/os/{id_os}/status', headers=self.headers,
+                            data=json.dumps({"status": status}))
+
+        r = self.client.put(f'/api/os/{id_os}/status', headers=self.headers,
+                            data=json.dumps({"status": "Solicitado alterações"}))
+        self.assertEqual(r.status_code, 200)
+
+        r = self.client.put(f'/api/os/{id_os}/status', headers=self.headers,
+                            data=json.dumps({"status": "Em diagnóstico"}))
+        self.assertEqual(r.status_code, 200)
+
+        data = self.client.get(f'/api/os/{id_os}').get_json()
+        self.assertEqual(data["status"], "Em diagnóstico")
 
     def test_login_senha_errada(self):
         response = self.client.post(
@@ -311,7 +328,7 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
         os_data = self.client.get(f'/api/os/{id_os}').get_json()
-        self.assertEqual(os_data['status'], "Em execução")
+        self.assertEqual(os_data['status'], "Aprovado")
 
     def test_recusa_orcamento(self):
         _, id_cliente = self.criar_cliente()

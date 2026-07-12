@@ -192,15 +192,18 @@ O pipeline em `.github/workflows/ci-cd.yml` executa em todo push para `main`:
 |---|---|---|
 | `test` | PR e push | Instala dependências e roda `pytest` |
 | `build` | Push para `main` | Build e push da imagem para GHCR (`ghcr.io`) |
-| `deploy` | Após `build` | `kubectl apply -f k8s/` + atualiza a imagem do Deployment |
+| `deploy` | Após `build` | Injeta secrets, aplica manifests k8s e atualiza a imagem do Deployment |
 
-**Secrets necessários no GitHub:**
+**Secrets necessários no GitHub** (Settings → Secrets and variables → Actions):
 
 | Secret | Descrição |
 |---|---|
 | `KUBECONFIG_B64` | Conteúdo do kubeconfig em base64 (`base64 ~/.kube/config`) |
+| `JWT_SECRET_KEY` | Chave secreta para assinar os tokens JWT |
+| `WEBHOOK_TOKEN` | Token de autenticação do endpoint de webhook |
 
 > `GITHUB_TOKEN` é fornecido automaticamente pelo GitHub para push no GHCR.
+> Os valores de `JWT_SECRET_KEY` e `WEBHOOK_TOKEN` são injetados em `k8s/secret.yaml` via `envsubst` no momento do deploy — nenhum valor sensível fica no repositório.
 
 ## 🖼️ Modelagem Estratégica e Design Orientado a Domínio (DDD)
 

@@ -1,9 +1,12 @@
 from flask import Flask
 from flasgger import Swagger
 from flask_jwt_extended import JWTManager
-from infrastructure import Infrastructure
+from infrastructure import (Infrastructure, ClienteRepositorySQLite, VeiculoRepositorySQLite,
+                             PecaRepositorySQLite, ServicoRepositorySQLite,
+                             OrdemServicoRepositorySQLite, UsuarioRepositorySQLite)
 from web import api
 import os
+import application
 
 
 def create_app():
@@ -18,6 +21,13 @@ def create_app():
     Swagger(app)
 
     Infrastructure.init_db()
+
+    application.cliente_repo = ClienteRepositorySQLite()
+    application.veiculo_repo = VeiculoRepositorySQLite()
+    application.peca_repo = PecaRepositorySQLite()
+    application.servico_repo = ServicoRepositorySQLite()
+    application.os_repo = OrdemServicoRepositorySQLite()
+    application.usuario_repo = UsuarioRepositorySQLite()
 
     app.register_blueprint(api, url_prefix='/api')
 
