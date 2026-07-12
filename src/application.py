@@ -1,5 +1,5 @@
 from infrastructure import Infrastructure
-from domain import Cliente, Veiculo, OrdemServico, DomainError, PecasCarro, ServicosCarro, Usuario, STATUS_FLUXO
+from domain import Cliente, Veiculo, OrdemServico, DomainError, PecasCarro, ServicosCarro, Usuario
 
 
 class OficinaAppService:

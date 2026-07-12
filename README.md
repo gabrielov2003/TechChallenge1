@@ -1,15 +1,21 @@
-# Sistema de Gestão de Oficina Mecânica (MVP) - Fase 1
+# Sistema de Gestão de Oficina Mecânica (MVP) - Fase 2
 
 Este projeto é o **MVP (Minimum Viable Product)** de um sistema de back-end desenvolvido para uma oficina mecânica de médio porte. O objetivo principal é automatizar o fluxo de atendimento, desde a recepção do veículo até a entrega final, resolvendo problemas de desorganização, falhas no controle de estoque e falta de histórico.
 
 ## 🛠️ Tecnologias Utilizadas
 
 *   **Python 3.11+ / Flask:** Framework para criação da API RESTful.
+*   **Flask-JWT-Extended:** Autenticação segura via JWT para APIs administrativas.
+*   **Werkzeug:** Hash seguro de senhas.
 *   **SQLite3:** Banco de dados relacional leve.
 *   **Pandas:** Utilizado na camada de infraestrutura para manipulação eficiente de dados e geração de relatórios.
 *   **Docker & Docker Compose:** Para containerização e execução simplificada do ambiente.
-*   **JWT (JSON Web Token):** Autenticação segura para APIs administrativas.
+*   **Kubernetes:** Manifestos em `k8s/` para deploy em cluster (Deployment, HPA, PVC, Service).
+*   **Terraform:** Provisionamento de infraestrutura na AWS (EKS + VPC).
+*   **GitHub Actions:** Pipeline de CI/CD para testes, build e deploy automático.
 *   **Flasgger (Swagger):** Documentação interativa da API.
+*   **Bandit:** Análise estática de segurança do código Python.
+*   **Pytest:** Framework de testes automatizados.
 
 ## 🏛️ Arquitetura e Organização (DDD)
 
@@ -30,12 +36,24 @@ A escolha pelo **SQLite** para este MVP justifica-se pela sua natureza *serverle
 A maneira mais rápida e recomendada de executar a aplicação é utilizando o **Docker**.
 
 ### Pré-requisitos
+*   Git instalado.
 *   Docker instalado.
 *   Docker Compose instalado.
+*   Python 3.11+ instalado (apenas para rodar os testes localmente, sem Docker).
 
 ### Passo a Passo
 1.  **Clone o repositório** e acesse a pasta raiz do projeto.
-2.  **Defina a chave secreta** (opcional): No arquivo `docker-compose.yml`, você encontrará a variável `JWT_SECRET_KEY`. Você pode alterá-la para qualquer valor aleatório para garantir a segurança dos tokens.
+2.  **Configure as variáveis de ambiente**: Copie o arquivo de exemplo e ajuste os valores conforme necessário:
+    ```bash
+    cp .env.example .env
+    ```
+    As variáveis disponíveis são:
+    | Variável | Descrição | Padrão |
+    |---|---|---|
+    | `FLASK_DEBUG` | Ativa o modo debug do Flask (`0` = desligado) | `0` |
+    | `DATABASE_PATH` | Caminho do arquivo SQLite | `instance/database.db` |
+    | `JWT_SECRET_KEY` | Chave secreta para assinar os tokens JWT — **troque em produção** | — |
+    | `WEBHOOK_TOKEN` | Token de autenticação do endpoint de webhook — **troque em produção** | — |
 3.  **Execute o comando de build e inicialização**:
     ```bash
     docker-compose up --build
