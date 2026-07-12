@@ -3,7 +3,6 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, create_access_token
 from application import OficinaAppService
 from flasgger import swag_from
-from infrastructure import Infrastructure
 
 api = Blueprint('api', __name__)
 
@@ -156,11 +155,10 @@ def criar_os():
     }
 })
 def get_cliente_por_documento(doc):
-    query = "SELECT * FROM Cliente WHERE documento = ?"
-    df = Infrastructure.fetch_pandas(query, (doc,))
-    if df.empty:
+    resultado = OficinaAppService.buscar_cliente_por_documento(doc)
+    if not resultado:
         return jsonify({"erro": "Cliente não encontrado"}), 404
-    return jsonify(df.to_dict(orient='records')), 200
+    return jsonify(resultado), 200
 
 
 @api.route('/veiculos/placa/<placa>', methods=['GET'])
@@ -181,11 +179,10 @@ def get_cliente_por_documento(doc):
     }
 })
 def get_veiculo_por_placa(placa):
-    query = "SELECT * FROM Veiculo WHERE placa = ?"
-    df = Infrastructure.fetch_pandas(query, (placa,))
-    if df.empty:
+    resultado = OficinaAppService.buscar_veiculo_por_placa(placa)
+    if not resultado:
         return jsonify({"erro": "Veiculo não encontrado"}), 404
-    return jsonify(df.to_dict(orient='records')), 200
+    return jsonify(resultado), 200
 
 
 @api.route('/os/<int:id_os>/servicos', methods=['POST'])

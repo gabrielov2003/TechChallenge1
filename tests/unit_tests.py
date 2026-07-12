@@ -272,6 +272,113 @@ class TestAPI(unittest.TestCase):
         response = self.client.get(f'/api/os/{id_os}')
         self.assertEqual(response.status_code, 200)
 
+    def test_criar_os_com_pecas_e_servicos(self):
+        _, id_cliente = self.criar_cliente()
+        _, id_veiculo = self.criar_veiculo()
+
+        response = self.client.post(
+            '/api/os',
+            headers=self.headers,
+            data=json.dumps({
+                "id_cliente": id_cliente,
+                "id_veiculo": id_veiculo,
+                "pecas": [{"peca": "Filtro", "valor_total": 50.0}],
+                "servicos": [{"servico": "Revisão", "valor_total": 100.0}]
+            })
+        )
+        self.assertEqual(response.status_code, 201)
+        id_os = response.get_json()['id_os']
+
+        orcamento = self.client.get(f'/api/os/{id_os}').get_json()
+        self.assertEqual(orcamento['total_orcamento'], 150.0)
+        self.assertEqual(len(orcamento['detalhes']['pecas']), 1)
+        self.assertEqual(len(orcamento['detalhes']['servicos']), 1)
+
+    def test_aprovacao_orcamento(self):
+        _, id_cliente = self.criar_cliente()
+        _, id_veiculo = self.criar_veiculo()
+        id_os = self.criar_os(id_cliente, id_veiculo)
+
+        for status in ["Em diagnóstico", "Aguardando aprovação"]:
+            self.client.put(f'/api/os/{id_os}/status', headers=self.headers,
+                            data=json.dumps({"status": status}))
+
+        response = self.client.post(
+            f'/api/os/{id_os}/aprovacao',
+            headers=self.headers,
+            data=json.dumps({"aprovado": True})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        os_data = self.client.get(f'/api/os/{id_os}').get_json()
+        self.assertEqual(os_data['status'], "Em execução")
+
+    def test_recusa_orcamento(self):
+        _, id_cliente = self.criar_cliente()
+        _, id_veiculo = self.criar_veiculo()
+        id_os = self.criar_os(id_cliente, id_veiculo)
+
+        for status in ["Em diagnóstico", "Aguardando aprovação"]:
+            self.client.put(f'/api/os/{id_os}/status', headers=self.headers,
+                            data=json.dumps({"status": status}))
+
+        response = self.client.post(
+            f'/api/os/{id_os}/aprovacao',
+            headers=self.headers,
+            data=json.dumps({"aprovado": False})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        os_data = self.client.get(f'/api/os/{id_os}').get_json()
+        self.assertEqual(os_data['status'], "Recusada")
+
+    def test_webhook_atualiza_status(self):
+        _, id_cliente = self.criar_cliente()
+        _, id_veiculo = self.criar_veiculo()
+        id_os = self.criar_os(id_cliente, id_veiculo)
+
+        response = self.client.post(
+            '/api/os/webhook/status',
+            content_type='application/json',
+            headers={'X-Webhook-Token': 'webhook-secret'},
+            data=json.dumps({"id_os": id_os, "status": "Em diagnóstico"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        os_data = self.client.get(f'/api/os/{id_os}').get_json()
+        self.assertEqual(os_data['status'], "Em diagnóstico")
+
+    def test_webhook_token_invalido(self):
+        response = self.client.post(
+            '/api/os/webhook/status',
+            content_type='application/json',
+            headers={'X-Webhook-Token': 'token-errado'},
+            data=json.dumps({"id_os": 1, "status": "Em diagnóstico"})
+        )
+        self.assertEqual(response.status_code, 401)
+
+    def test_listar_os_ordenada(self):
+        _, id_cliente = self.criar_cliente()
+        _, id_veiculo = self.criar_veiculo()
+        id_os = self.criar_os(id_cliente, id_veiculo)
+
+        response = self.client.get('/api/os', headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        ordens = response.get_json()
+        ids = [o['id_os'] for o in ordens]
+        self.assertIn(id_os, ids)
+
+    def test_get_os_status_publico(self):
+        _, id_cliente = self.criar_cliente()
+        _, id_veiculo = self.criar_veiculo()
+        id_os = self.criar_os(id_cliente, id_veiculo)
+
+        response = self.client.get(f'/api/os/{id_os}/status')
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data['id_os'], id_os)
+        self.assertEqual(data['status'], "Recebida")
+
 
 if __name__ == '__main__':
     unittest.main()

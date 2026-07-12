@@ -32,6 +32,12 @@ class OficinaAppService:
         return Infrastructure.fetch_one("SELECT * FROM Cliente WHERE id_cliente = ?", (id_cliente,))
 
     @staticmethod
+    def buscar_cliente_por_documento(documento):
+        return Infrastructure.fetch_pandas(
+            "SELECT * FROM Cliente WHERE documento = ?", (documento,)
+        ).to_dict(orient='records')
+
+    @staticmethod
     def atualizar_cliente(id_cliente, nome, documento):
         try:
             c = Cliente(documento=documento, nome=nome)
@@ -56,6 +62,12 @@ class OficinaAppService:
     @staticmethod
     def buscar_veiculo_por_id(id_veiculo):
         return Infrastructure.fetch_one("SELECT * FROM Veiculo WHERE id_veiculo = ?", (id_veiculo,))
+
+    @staticmethod
+    def buscar_veiculo_por_placa(placa):
+        return Infrastructure.fetch_pandas(
+            "SELECT * FROM Veiculo WHERE placa = ?", (placa,)
+        ).to_dict(orient='records')
 
     @staticmethod
     def atualizar_veiculo(id_veiculo, placa, marca, modelo, ano):
