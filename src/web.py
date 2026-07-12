@@ -6,13 +6,21 @@ from infrastructure import Infrastructure
 
 api = Blueprint('api', __name__)
 
-@api.route('/login')
+@api.route('/login', methods=['POST'])
 @swag_from({
     'tags': ['Login'],
-    'description': 'Rota para fazer login e retornar o Berear Token, ele deve ser usado para fazer as proximas requisições'
+    'description': 'Rota para fazer login e retornar o Bearer Token'
 })
 def login():
-    token = create_access_token(identity="1")
+    data = request.json or {}
+    username = data.get('username')
+    senha = data.get('senha')
+    if not username or not senha:
+        return jsonify({"erro": "username e senha são obrigatórios"}), 400
+    user_id = OficinaAppService.autenticar_usuario(username, senha)
+    if not user_id:
+        return jsonify({"erro": "Credenciais inválidas"}), 401
+    token = create_access_token(identity=user_id)
     return jsonify(access_token=token)
 
 @api.route('/clientes', methods=['POST'])
@@ -144,7 +152,7 @@ def criar_os():
     }
 })
 def get_cliente_por_documento(doc):
-    query = "SELECT * FROM Clinete WHERE documento = ?"
+    query = "SELECT * FROM Cliente WHERE documento = ?"
     df = Infrastructure.fetch_pandas(query, (doc,))
     if df.empty:
         return jsonify({"erro": "Cliente não encontrado"}), 404
@@ -265,7 +273,6 @@ def adicionar_peca(id_os):
 
 
 @api.route('/os/<int:id_os>', methods=['GET'])
-@jwt_required()
 @swag_from({
     'tags': ['Ordem de Serviço'],
     'description': 'Retorna os dados completos da OS',
@@ -330,5 +337,174 @@ def atualizar_status(id_os):
 
     if isinstance(resultado, dict) and "erro" in resultado:
         return jsonify(resultado), 400
+    if resultado is False:
+        return jsonify({"erro": "OS não encontrada ou transição inválida"}), 400
 
     return jsonify({"mensagem": "Status atualizado"}), 200
+
+
+@api.route('/os', methods=['GET'])
+@jwt_required()
+def listar_os():
+    return jsonify(OficinaAppService.listar_ordens()), 200
+
+
+@api.route('/os/tempo-medio', methods=['GET'])
+@jwt_required()
+def tempo_medio_os():
+    media = OficinaAppService.tempo_medio_execucao()
+    return jsonify({"media_dias": media}), 200
+
+
+@api.route('/clientes', methods=['GET'])
+@jwt_required()
+def listar_clientes():
+    return jsonify(OficinaAppService.listar_clientes()), 200
+
+
+@api.route('/clientes/<int:id_cliente>', methods=['GET'])
+@jwt_required()
+def get_cliente(id_cliente):
+    c = OficinaAppService.buscar_cliente_por_id(id_cliente)
+    if not c:
+        return jsonify({"erro": "Cliente não encontrado"}), 404
+    return jsonify(c), 200
+
+
+@api.route('/clientes/<int:id_cliente>', methods=['PUT'])
+@jwt_required()
+def put_cliente(id_cliente):
+    data = request.json
+    resultado = OficinaAppService.atualizar_cliente(id_cliente, data['nome'], data['documento'])
+    if isinstance(resultado, dict) and "erro" in resultado:
+        return jsonify(resultado), 400
+    if not resultado:
+        return jsonify({"erro": "Cliente não encontrado"}), 404
+    return jsonify({"mensagem": "Cliente atualizado"}), 200
+
+
+@api.route('/clientes/<int:id_cliente>', methods=['DELETE'])
+@jwt_required()
+def delete_cliente(id_cliente):
+    if not OficinaAppService.deletar_cliente(id_cliente):
+        return jsonify({"erro": "Cliente não encontrado"}), 404
+    return jsonify({"mensagem": "Cliente removido"}), 200
+
+
+@api.route('/veiculos', methods=['GET'])
+@jwt_required()
+def listar_veiculos():
+    return jsonify(OficinaAppService.listar_veiculos()), 200
+
+
+@api.route('/veiculos/<int:id_veiculo>', methods=['GET'])
+@jwt_required()
+def get_veiculo(id_veiculo):
+    v = OficinaAppService.buscar_veiculo_por_id(id_veiculo)
+    if not v:
+        return jsonify({"erro": "Veículo não encontrado"}), 404
+    return jsonify(v), 200
+
+
+@api.route('/veiculos/<int:id_veiculo>', methods=['PUT'])
+@jwt_required()
+def put_veiculo(id_veiculo):
+    data = request.json
+    resultado = OficinaAppService.atualizar_veiculo(
+        id_veiculo, data['placa'], data['marca'], data['modelo'], data['ano']
+    )
+    if isinstance(resultado, dict) and "erro" in resultado:
+        return jsonify(resultado), 400
+    if not resultado:
+        return jsonify({"erro": "Veículo não encontrado"}), 404
+    return jsonify({"mensagem": "Veículo atualizado"}), 200
+
+
+@api.route('/veiculos/<int:id_veiculo>', methods=['DELETE'])
+@jwt_required()
+def delete_veiculo(id_veiculo):
+    if not OficinaAppService.deletar_veiculo(id_veiculo):
+        return jsonify({"erro": "Veículo não encontrado"}), 404
+    return jsonify({"mensagem": "Veículo removido"}), 200
+
+
+@api.route('/pecas', methods=['POST'])
+@jwt_required()
+def post_peca():
+    data = request.json
+    resultado = OficinaAppService.cadastrar_peca(
+        data['nome'], data['valor_unitario'], data.get('estoque', 0)
+    )
+    return jsonify({"id_peca": resultado}), 201
+
+
+@api.route('/pecas', methods=['GET'])
+@jwt_required()
+def listar_pecas():
+    return jsonify(OficinaAppService.listar_pecas()), 200
+
+
+@api.route('/pecas/<int:id_peca>', methods=['GET'])
+@jwt_required()
+def get_peca(id_peca):
+    p = OficinaAppService.buscar_peca_por_id(id_peca)
+    if not p:
+        return jsonify({"erro": "Peça não encontrada"}), 404
+    return jsonify(p), 200
+
+
+@api.route('/pecas/<int:id_peca>', methods=['PUT'])
+@jwt_required()
+def put_peca(id_peca):
+    data = request.json
+    if not OficinaAppService.atualizar_peca(id_peca, data['nome'], data['valor_unitario'], data['estoque']):
+        return jsonify({"erro": "Peça não encontrada"}), 404
+    return jsonify({"mensagem": "Peça atualizada"}), 200
+
+
+@api.route('/pecas/<int:id_peca>', methods=['DELETE'])
+@jwt_required()
+def delete_peca(id_peca):
+    if not OficinaAppService.deletar_peca(id_peca):
+        return jsonify({"erro": "Peça não encontrada"}), 404
+    return jsonify({"mensagem": "Peça removida"}), 200
+
+
+@api.route('/servicos', methods=['POST'])
+@jwt_required()
+def post_servico():
+    data = request.json
+    resultado = OficinaAppService.cadastrar_servico_catalogo(data['nome'], data['valor'])
+    return jsonify({"id_servico": resultado}), 201
+
+
+@api.route('/servicos', methods=['GET'])
+@jwt_required()
+def listar_servicos():
+    return jsonify(OficinaAppService.listar_servicos_catalogo()), 200
+
+
+@api.route('/servicos/<int:id_servico>', methods=['GET'])
+@jwt_required()
+def get_servico(id_servico):
+    s = OficinaAppService.buscar_servico_por_id(id_servico)
+    if not s:
+        return jsonify({"erro": "Serviço não encontrado"}), 404
+    return jsonify(s), 200
+
+
+@api.route('/servicos/<int:id_servico>', methods=['PUT'])
+@jwt_required()
+def put_servico(id_servico):
+    data = request.json
+    if not OficinaAppService.atualizar_servico(id_servico, data['nome'], data['valor']):
+        return jsonify({"erro": "Serviço não encontrado"}), 404
+    return jsonify({"mensagem": "Serviço atualizado"}), 200
+
+
+@api.route('/servicos/<int:id_servico>', methods=['DELETE'])
+@jwt_required()
+def delete_servico(id_servico):
+    if not OficinaAppService.deletar_servico(id_servico):
+        return jsonify({"erro": "Serviço não encontrado"}), 404
+    return jsonify({"mensagem": "Serviço removido"}), 200

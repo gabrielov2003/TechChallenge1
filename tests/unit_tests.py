@@ -28,10 +28,10 @@ def gerar_placa():
         random.choice(letras) +
         random.choice(letras) +
         random.choice(letras) +
-        str(random.randint(1, 8)) +
+        str(random.randint(0, 9)) +
         random.choice(letras) +
-        str(random.randint(1, 8)) +
-        str(random.randint(1, 8))
+        str(random.randint(0, 9)) +
+        str(random.randint(0, 9))
     )
 
 
@@ -43,7 +43,11 @@ class TestAPI(unittest.TestCase):
         self.client = app.test_client()
 
         # Login
-        response = self.client.get('/api/login')
+        response = self.client.post(
+            '/api/login',
+            content_type='application/json',
+            data=json.dumps({"username": "admin", "senha": "admin123"})
+        )
         self.token = response.get_json()['access_token']
 
         self.headers = {
@@ -90,8 +94,13 @@ class TestAPI(unittest.TestCase):
 
 
     def test_login(self):
-        response = self.client.get('/api/login')
+        response = self.client.post(
+            '/api/login',
+            content_type='application/json',
+            data=json.dumps({"username": "admin", "senha": "admin123"})
+        )
         self.assertEqual(response.status_code, 200)
+        self.assertIn('access_token', response.get_json())
 
     def test_criar_cliente(self):
         cpf, _ = self.criar_cliente()
@@ -134,7 +143,7 @@ class TestAPI(unittest.TestCase):
         response = self.client.put(
             f'/api/os/{id_os}/status',
             headers=self.headers,
-            data=json.dumps({"status": "Em execução"})
+            data=json.dumps({"status": "Em diagnóstico"})
         )
         self.assertEqual(response.status_code, 200)
 
@@ -173,11 +182,12 @@ class TestAPI(unittest.TestCase):
         _, id_veiculo = self.criar_veiculo()
         id_os = self.criar_os(id_cliente, id_veiculo)
 
-        self.client.put(
-            f'/api/os/{id_os}/status',
-            headers=self.headers,
-            data=json.dumps({"status": "Em execução"})
-        )
+        for status in ["Em diagnóstico", "Aguardando aprovação", "Em execução"]:
+            self.client.put(
+                f'/api/os/{id_os}/status',
+                headers=self.headers,
+                data=json.dumps({"status": status})
+            )
 
         self.client.post(
             f'/api/os/{id_os}/servicos',
@@ -197,17 +207,70 @@ class TestAPI(unittest.TestCase):
             })
         )
 
-        response = self.client.get(
-            f'/api/os/{id_os}',
-            headers=self.headers
-        )
-
+        response = self.client.get(f'/api/os/{id_os}')
         data = response.get_json()
 
         self.assertEqual(data["status"], "Em execução")
         self.assertEqual(data["total_orcamento"], 230.0)
         self.assertEqual(data["detalhes"]["servicos"][0]["servico"], "Troca de óleo")
         self.assertEqual(data["detalhes"]["pecas"][0]["peca"], "Filtro de óleo")
+
+    def test_login_senha_errada(self):
+        response = self.client.post(
+            '/api/login',
+            content_type='application/json',
+            data=json.dumps({"username": "admin", "senha": "errada"})
+        )
+        self.assertEqual(response.status_code, 401)
+
+    def test_cpf_invalido(self):
+        response = self.client.post(
+            '/api/clientes',
+            headers=self.headers,
+            data=json.dumps({"documento": "00000000000", "nome": "Teste"})
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_placa_invalida(self):
+        response = self.client.post(
+            '/api/veiculos',
+            headers=self.headers,
+            data=json.dumps({"placa": "INVALIDA", "marca": "X", "modelo": "Y", "ano": 2020})
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_placa_com_zero_e_nove(self):
+        letras = string.ascii_uppercase
+        placa = (
+            random.choice(letras) + random.choice(letras) + random.choice(letras) +
+            "0" + random.choice(letras) + "9" + str(random.randint(0, 9))
+        )
+        response = self.client.post(
+            '/api/veiculos',
+            headers=self.headers,
+            data=json.dumps({"placa": placa, "marca": "X", "modelo": "Y", "ano": 2020})
+        )
+        self.assertEqual(response.status_code, 201)
+
+    def test_salto_de_status_rejeitado(self):
+        _, id_cliente = self.criar_cliente()
+        _, id_veiculo = self.criar_veiculo()
+        id_os = self.criar_os(id_cliente, id_veiculo)
+
+        response = self.client.put(
+            f'/api/os/{id_os}/status',
+            headers=self.headers,
+            data=json.dumps({"status": "Em execução"})
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_rota_publica_sem_token(self):
+        _, id_cliente = self.criar_cliente()
+        _, id_veiculo = self.criar_veiculo()
+        id_os = self.criar_os(id_cliente, id_veiculo)
+
+        response = self.client.get(f'/api/os/{id_os}')
+        self.assertEqual(response.status_code, 200)
 
 
 if __name__ == '__main__':
