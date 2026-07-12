@@ -58,8 +58,13 @@ jobs:
         run: |
           echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > /tmp/kubeconfig
           echo "KUBECONFIG=/tmp/kubeconfig" >> $GITHUB_ENV
+          if ! kubectl cluster-info > /dev/null 2>&1; then
+            echo "Cluster inacessível — etapa de deploy ignorada."
+            echo "SKIP_DEPLOY=true" >> $GITHUB_ENV
+          fi
 
       - name: Apply K8s manifests
+        if: env.SKIP_DEPLOY != 'true'
         env:
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
           WEBHOOK_TOKEN: ${{ secrets.WEBHOOK_TOKEN }}
@@ -68,6 +73,7 @@ jobs:
           kubectl apply -f k8s/configmap.yaml -f k8s/pvc.yaml -f k8s/deployment.yaml -f k8s/service.yaml -f k8s/hpa.yaml
 
       - name: Update image and rollout
+        if: env.SKIP_DEPLOY != 'true'
         run: |
           kubectl set image deployment/oficina-api oficina-api=${{ env.IMAGE }}:${{ github.sha }}
           kubectl rollout status deployment/oficina-api --timeout=120s
