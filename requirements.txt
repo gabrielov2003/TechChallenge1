@@ -4,3 +4,4 @@ werkzeug==2.3.7
 pandas
 flasgger
 bandit
+pytest
