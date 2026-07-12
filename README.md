@@ -15,7 +15,7 @@ Este projeto é o **MVP (Minimum Viable Product)** de um sistema de back-end des
 
 O projeto segue os princípios de **Domain-Driven Design (DDD)**, organizado em uma arquitetura de camadas para garantir separação de responsabilidades:
 
-*   **`src/domain.py`**: Contém as entidades de negócio (`Clinete`, `Veiculo`, `OrdemServico`) e validações de dados sensíveis como CPF/CNPJ e placas.
+*   **`src/domain.py`**: Contém as entidades de negócio (`Cliente`, `Veiculo`, `OrdemServico`) e validações de dados sensíveis como CPF/CNPJ e placas.
 *   **`src/application.py`**: Orquestra os casos de uso, como a abertura de OS e a geração automática de orçamentos.
 *   **`src/infrastructure.py`**: Gerencia a persistência no SQLite3 e a configuração técnica do banco de dados.
 *   **`src/web.py`**: Define os endpoints da API e a documentação Swagger.
@@ -41,7 +41,7 @@ A maneira mais rápida e recomendada de executar a aplicação é utilizando o *
     docker-compose up --build
     ```
 4.  **Acesso à API**: O servidor estará disponível em `http://localhost:5000`.
-5. Para fazer requisições, você precisa primeiro fazer um GET na rota http://localhost:5000/api/login que irá retornar um TOKEN, este deve ser passado em todas as requisições no headers da seguinte maneira: Authorization=Bearer token_retornado
+5. Para fazer requisições, você precisa primeiro fazer um **POST** na rota `http://localhost:5000/api/login` com body `{"username": "admin", "senha": "admin123"}`, que irá retornar um TOKEN. Este deve ser passado em todas as requisições no header: `Authorization: Bearer <token>`
 
 *Nota: O banco de dados `database.db` será criado automaticamente na primeira execução através do script de infraestrutura integrado ao `app.py`.*
 
@@ -63,10 +63,6 @@ O sistema gerencia o ciclo de vida completo da OS conforme definido no **Event S
 2.  **Abertura**: OS criada com status inicial **"Recebida"**.
 3.  **Diagnóstico**: O mecânico adiciona peças e serviços, e o sistema gera o orçamento automático.
 4.  **Acompanhamento**: A OS progride pelos status: *Recebida → Em diagnóstico → Aguardando aprovação → Em execução → Finalizada → Entregue*.
-
-Gabriel, aqui vai um trecho direto e pronto pra colar no seu README:
-
----
 
 ## 🧪 Testes Unitários
 
@@ -98,17 +94,28 @@ python -m unittest tests/unit_tests.py
 
 ## 📊 Análise Estática de Código
 
-O projeto conta com uma análise estática realizada com **Pylint**, com o objetivo de identificar possíveis vulnerabilidades, más práticas e melhorias no código.
+### Bandit (Segurança)
 
-O relatório completo pode ser encontrado no arquivo:
+O relatório completo está em `bandit-report.txt`. A análise identificou **4 ocorrências**:
 
-```id="r8y6kf"
-pylint-report.txt
-```
+| Severidade | Descrição |
+|---|---|
+| 🔴 High | `debug=True` em `app.py` — expõe o debugger do Werkzeug em produção |
+| 🟡 Medium | Binding em `0.0.0.0` — expõe o servidor em todas as interfaces |
+| 🟡 Medium | Possível SQL injection via f-string em `application.py` (falso positivo — a concatenação é estática) |
+| 🟢 Low | `try/except/pass` em `infrastructure.py` na migração de colunas existentes |
 
-Para complementar a documentação do seu projeto e atender aos requisitos de entrega da Fase 1, você pode adicionar a seguinte seção ao seu relatório ou README, destacando a inclusão do diagrama solicitado:
+O ponto de atenção real é o `debug=True`, que deve ser desabilitado em ambiente de produção. Os demais são aceitáveis para um MVP.
 
-### **🖼️ Modelagem Estratégica e Design Orientado a Domínio (DDD)**
+### Pylint (Qualidade)
+
+O relatório completo está em `pylint-report.txt`. A nota obtida foi **6.91/10**. Os avisos são majoritariamente:
+
+- **Ausência de docstrings** em módulos, classes e métodos (C0114, C0115, C0116) — padrão intencional do projeto MVP.
+- **Linhas longas** acima de 100 caracteres em alguns arquivos (C0301).
+- **Ordem de imports** (C0411) e uma variável redefinida no escopo externo (W0621).
+
+## 🖼️ Modelagem Estratégica e Design Orientado a Domínio (DDD)
 
 Como parte integrante da documentação de arquitetura, foi adicionado o arquivo **`diagrama_ddd.png`**. Este documento visual apresenta a modelagem completa do sistema, dividida em duas frentes principais:
 
