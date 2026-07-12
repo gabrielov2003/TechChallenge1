@@ -1,15 +1,21 @@
-# Sistema de Gestão de Oficina Mecânica (MVP) - Fase 1
+# Sistema de Gestão de Oficina Mecânica (MVP) - Fase 2
 
 Este projeto é o **MVP (Minimum Viable Product)** de um sistema de back-end desenvolvido para uma oficina mecânica de médio porte. O objetivo principal é automatizar o fluxo de atendimento, desde a recepção do veículo até a entrega final, resolvendo problemas de desorganização, falhas no controle de estoque e falta de histórico.
 
 ## 🛠️ Tecnologias Utilizadas
 
 *   **Python 3.11+ / Flask:** Framework para criação da API RESTful.
+*   **Flask-JWT-Extended:** Autenticação segura via JWT para APIs administrativas.
+*   **Werkzeug:** Hash seguro de senhas.
 *   **SQLite3:** Banco de dados relacional leve.
 *   **Pandas:** Utilizado na camada de infraestrutura para manipulação eficiente de dados e geração de relatórios.
 *   **Docker & Docker Compose:** Para containerização e execução simplificada do ambiente.
-*   **JWT (JSON Web Token):** Autenticação segura para APIs administrativas.
+*   **Kubernetes:** Manifestos em `k8s/` para deploy em cluster (Deployment, HPA, PVC, Service).
+*   **Terraform:** Provisionamento de infraestrutura na AWS (EKS + VPC).
+*   **GitHub Actions:** Pipeline de CI/CD para testes, build e deploy automático.
 *   **Flasgger (Swagger):** Documentação interativa da API.
+*   **Bandit:** Análise estática de segurança do código Python.
+*   **Pytest:** Framework de testes automatizados.
 
 ## 🏛️ Arquitetura e Organização (DDD)
 
@@ -30,12 +36,24 @@ A escolha pelo **SQLite** para este MVP justifica-se pela sua natureza *serverle
 A maneira mais rápida e recomendada de executar a aplicação é utilizando o **Docker**.
 
 ### Pré-requisitos
+*   Git instalado.
 *   Docker instalado.
 *   Docker Compose instalado.
+*   Python 3.11+ instalado (apenas para rodar os testes localmente, sem Docker).
 
 ### Passo a Passo
 1.  **Clone o repositório** e acesse a pasta raiz do projeto.
-2.  **Defina a chave secreta** (opcional): No arquivo `docker-compose.yml`, você encontrará a variável `JWT_SECRET_KEY`. Você pode alterá-la para qualquer valor aleatório para garantir a segurança dos tokens.
+2.  **Configure as variáveis de ambiente**: Copie o arquivo de exemplo e ajuste os valores conforme necessário:
+    ```bash
+    cp .env.example .env
+    ```
+    As variáveis disponíveis são:
+    | Variável | Descrição | Padrão |
+    |---|---|---|
+    | `FLASK_DEBUG` | Ativa o modo debug do Flask (`0` = desligado) | `0` |
+    | `DATABASE_PATH` | Caminho do arquivo SQLite | `instance/database.db` |
+    | `JWT_SECRET_KEY` | Chave secreta para assinar os tokens JWT — **troque em produção** | — |
+    | `WEBHOOK_TOKEN` | Token de autenticação do endpoint de webhook — **troque em produção** | — |
 3.  **Execute o comando de build e inicialização**:
     ```bash
     docker-compose up --build
@@ -114,6 +132,78 @@ O relatório completo está em `pylint-report.txt`. A nota obtida foi **6.91/10*
 - **Ausência de docstrings** em módulos, classes e métodos (C0114, C0115, C0116) — padrão intencional do projeto MVP.
 - **Linhas longas** acima de 100 caracteres em alguns arquivos (C0301).
 - **Ordem de imports** (C0411) e uma variável redefinida no escopo externo (W0621).
+
+## 🐳 Docker
+
+O `Dockerfile` usa **multi-stage build** e executa a aplicação com usuário não-root (`appuser`). Para desenvolvimento local:
+
+```bash
+cp .env.example .env  # ajuste as variáveis se necessário
+docker-compose up --build
+```
+
+## ☸️ Kubernetes
+
+Os manifestos ficam em `k8s/`. Para aplicar em um cluster já configurado:
+
+```bash
+kubectl apply -f k8s/
+```
+
+| Arquivo | Recurso | Descrição |
+|---|---|---|
+| `configmap.yaml` | ConfigMap | Variáveis não-sensíveis (`FLASK_DEBUG`, `DATABASE_PATH`) |
+| `secret.yaml` | Secret | Variáveis sensíveis (`JWT_SECRET_KEY`, `WEBHOOK_TOKEN`) |
+| `pvc.yaml` | PersistentVolumeClaim | Volume de 1Gi para persistência do banco SQLite |
+| `deployment.yaml` | Deployment | Pod da API com limites de CPU/memória e mount do PVC |
+| `service.yaml` | Service (LoadBalancer) | Expõe a API na porta 80 |
+| `hpa.yaml` | HorizontalPodAutoscaler | Escala de 1 a 5 pods (CPU ≥ 70% ou memória ≥ 80%) |
+
+> **Nota:** A imagem no `deployment.yaml` usa o placeholder `ghcr.io/OWNER/oficina-api:latest` — substituído automaticamente pelo pipeline CI/CD.
+
+## 🏗️ Terraform
+
+Os scripts ficam em `terraform/` e provisionam um cluster **EKS na AWS** com VPC dedicada.
+
+**Recursos criados:**
+- VPC com subnets públicas e privadas em 2 AZs
+- NAT Gateway para acesso à internet dos nós privados
+- Cluster EKS 1.30
+- Node Group gerenciado com instâncias `t3.small` (1–3 nós)
+
+**Como aplicar:**
+
+```bash
+cd terraform
+terraform init
+terraform plan
+terraform apply
+aws eks update-kubeconfig --region us-east-1 --name oficina-cluster
+kubectl apply -f ../k8s/
+```
+
+**Pré-requisitos:** AWS CLI configurado com credenciais válidas (`aws configure`).
+
+## 🔄 CI/CD (GitHub Actions)
+
+O pipeline em `.github/workflows/ci-cd.yml` executa em todo push para `main`:
+
+| Job | Gatilho | O que faz |
+|---|---|---|
+| `test` | PR e push | Instala dependências e roda `pytest` |
+| `build` | Push para `main` | Build e push da imagem para GHCR (`ghcr.io`) |
+| `deploy` | Após `build` | Injeta secrets, aplica manifests k8s e atualiza a imagem do Deployment |
+
+**Secrets necessários no GitHub** (Settings → Secrets and variables → Actions):
+
+| Secret | Descrição |
+|---|---|
+| `KUBECONFIG_B64` | Conteúdo do kubeconfig em base64 (`base64 ~/.kube/config`) |
+| `JWT_SECRET_KEY` | Chave secreta para assinar os tokens JWT |
+| `WEBHOOK_TOKEN` | Token de autenticação do endpoint de webhook |
+
+> `GITHUB_TOKEN` é fornecido automaticamente pelo GitHub para push no GHCR.
+> Os valores de `JWT_SECRET_KEY` e `WEBHOOK_TOKEN` são injetados em `k8s/secret.yaml` via `envsubst` no momento do deploy — nenhum valor sensível fica no repositório.
 
 ## 🖼️ Modelagem Estratégica e Design Orientado a Domínio (DDD)
 

@@ -1,7 +1,18 @@
 import re
 from werkzeug.security import generate_password_hash, check_password_hash
 
-STATUS_FLUXO = ["Recebida", "Em diagnóstico", "Aguardando aprovação", "Em execução", "Finalizada", "Entregue"]
+TRANSICOES = {
+    "Recebida": ["Em diagnóstico"],
+    "Em diagnóstico": ["Aguardando aprovação"],
+    "Aguardando aprovação": ["Aprovado", "Recusada", "Solicitado alterações"],
+    "Solicitado alterações": ["Em diagnóstico"],
+    "Aprovado": ["Em execução", "Aguardando peças"],
+    "Aguardando peças": ["Em execução", "Recusada"], # Pode ser recusada em caso de atraso no tempo de espera das peças
+    "Em execução": ["Finalizada"],
+    "Finalizada": ["Entregue"],
+    "Recusada": [],
+    "Entregue": [],
+}
 
 class DomainError(Exception):
     pass
@@ -59,16 +70,13 @@ class Veiculo:
 
 class OrdemServico:
     def __init__(self, id_cliente, id_veiculo, id_os=None, status="Recebida"):
-        self.STATUS_FLUXO = STATUS_FLUXO
         self.id_os = id_os
         self.id_cliente = id_cliente
         self.id_veiculo = id_veiculo
         self.status = status
 
     def pode_transicionar_para(self, novo_status):
-        if novo_status not in STATUS_FLUXO or self.status not in STATUS_FLUXO:
-            return False
-        return STATUS_FLUXO.index(novo_status) == STATUS_FLUXO.index(self.status) + 1
+        return novo_status in TRANSICOES.get(self.status, [])
 
 class PecasCarro:
     def __init__(self, id_os, peca, valor_total):
