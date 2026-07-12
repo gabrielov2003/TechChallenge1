@@ -115,6 +115,75 @@ O relatório completo está em `pylint-report.txt`. A nota obtida foi **6.91/10*
 - **Linhas longas** acima de 100 caracteres em alguns arquivos (C0301).
 - **Ordem de imports** (C0411) e uma variável redefinida no escopo externo (W0621).
 
+## 🐳 Docker
+
+O `Dockerfile` usa **multi-stage build** e executa a aplicação com usuário não-root (`appuser`). Para desenvolvimento local:
+
+```bash
+cp .env.example .env  # ajuste as variáveis se necessário
+docker-compose up --build
+```
+
+## ☸️ Kubernetes
+
+Os manifestos ficam em `k8s/`. Para aplicar em um cluster já configurado:
+
+```bash
+kubectl apply -f k8s/
+```
+
+| Arquivo | Recurso | Descrição |
+|---|---|---|
+| `configmap.yaml` | ConfigMap | Variáveis não-sensíveis (`FLASK_DEBUG`, `DATABASE_PATH`) |
+| `secret.yaml` | Secret | Variáveis sensíveis (`JWT_SECRET_KEY`, `WEBHOOK_TOKEN`) |
+| `pvc.yaml` | PersistentVolumeClaim | Volume de 1Gi para persistência do banco SQLite |
+| `deployment.yaml` | Deployment | Pod da API com limites de CPU/memória e mount do PVC |
+| `service.yaml` | Service (LoadBalancer) | Expõe a API na porta 80 |
+| `hpa.yaml` | HorizontalPodAutoscaler | Escala de 1 a 5 pods (CPU ≥ 70% ou memória ≥ 80%) |
+
+> **Nota:** A imagem no `deployment.yaml` usa o placeholder `ghcr.io/OWNER/oficina-api:latest` — substituído automaticamente pelo pipeline CI/CD.
+
+## 🏗️ Terraform
+
+Os scripts ficam em `terraform/` e provisionam um cluster **EKS na AWS** com VPC dedicada.
+
+**Recursos criados:**
+- VPC com subnets públicas e privadas em 2 AZs
+- NAT Gateway para acesso à internet dos nós privados
+- Cluster EKS 1.30
+- Node Group gerenciado com instâncias `t3.small` (1–3 nós)
+
+**Como aplicar:**
+
+```bash
+cd terraform
+terraform init
+terraform plan
+terraform apply
+aws eks update-kubeconfig --region us-east-1 --name oficina-cluster
+kubectl apply -f ../k8s/
+```
+
+**Pré-requisitos:** AWS CLI configurado com credenciais válidas (`aws configure`).
+
+## 🔄 CI/CD (GitHub Actions)
+
+O pipeline em `.github/workflows/ci-cd.yml` executa em todo push para `main`:
+
+| Job | Gatilho | O que faz |
+|---|---|---|
+| `test` | PR e push | Instala dependências e roda `pytest` |
+| `build` | Push para `main` | Build e push da imagem para GHCR (`ghcr.io`) |
+| `deploy` | Após `build` | `kubectl apply -f k8s/` + atualiza a imagem do Deployment |
+
+**Secrets necessários no GitHub:**
+
+| Secret | Descrição |
+|---|---|
+| `KUBECONFIG_B64` | Conteúdo do kubeconfig em base64 (`base64 ~/.kube/config`) |
+
+> `GITHUB_TOKEN` é fornecido automaticamente pelo GitHub para push no GHCR.
+
 ## 🖼️ Modelagem Estratégica e Design Orientado a Domínio (DDD)
 
 Como parte integrante da documentação de arquitetura, foi adicionado o arquivo **`diagrama_ddd.png`**. Este documento visual apresenta a modelagem completa do sistema, dividida em duas frentes principais:

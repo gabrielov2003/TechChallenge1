@@ -1,3 +1,4 @@
+import os
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, create_access_token
 from application import OficinaAppService
@@ -126,7 +127,10 @@ def post_veiculo():
 })
 def criar_os():
     data = request.json
-    resultado = OficinaAppService.abrir_ordem_servico(data['id_cliente'], data['id_veiculo'])
+    resultado = OficinaAppService.abrir_ordem_servico(
+        data['id_cliente'], data['id_veiculo'],
+        pecas=data.get('pecas'), servicos=data.get('servicos')
+    )
 
     if isinstance(resultado, dict) and "erro" in resultado:
         return jsonify(resultado), 400
@@ -340,6 +344,45 @@ def atualizar_status(id_os):
     if resultado is False:
         return jsonify({"erro": "OS não encontrada ou transição inválida"}), 400
 
+    return jsonify({"mensagem": "Status atualizado"}), 200
+
+
+@api.route('/os/<int:id_os>/status', methods=['GET'])
+def get_os_status(id_os):
+    resultado = OficinaAppService.gerar_orcamento_consolidado(id_os)
+    if not resultado:
+        return jsonify({"erro": "OS não encontrada"}), 404
+    return jsonify({"id_os": id_os, "status": resultado["status"]}), 200
+
+
+@api.route('/os/<int:id_os>/aprovacao', methods=['POST'])
+@jwt_required()
+def aprovar_orcamento(id_os):
+    data = request.json or {}
+    if 'aprovado' not in data:
+        return jsonify({"erro": "'aprovado' é obrigatório"}), 400
+    resultado = OficinaAppService.aprovar_orcamento(id_os, data['aprovado'])
+    if isinstance(resultado, dict) and "erro" in resultado:
+        return jsonify(resultado), 400
+    acao = "aprovado" if data['aprovado'] else "recusado"
+    return jsonify({"mensagem": f"Orçamento {acao}"}), 200
+
+
+@api.route('/os/webhook/status', methods=['POST'])
+def webhook_status():
+    token = request.headers.get('X-Webhook-Token') or (request.json or {}).get('token')
+    if token != os.getenv('WEBHOOK_TOKEN', 'webhook-secret'):
+        return jsonify({"erro": "Token inválido"}), 401
+    data = request.json or {}
+    id_os = data.get('id_os')
+    novo_status = data.get('status')
+    if not id_os or not novo_status:
+        return jsonify({"erro": "id_os e status são obrigatórios"}), 400
+    resultado = OficinaAppService.atualizar_progresso_os(id_os, novo_status)
+    if isinstance(resultado, dict) and "erro" in resultado:
+        return jsonify(resultado), 400
+    if resultado is False:
+        return jsonify({"erro": "OS não encontrada ou transição inválida"}), 400
     return jsonify({"mensagem": "Status atualizado"}), 200
 
 

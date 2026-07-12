@@ -140,12 +140,17 @@ class OficinaAppService:
             return {"erro": str(e)}
 
     @staticmethod
-    def abrir_ordem_servico(id_cliente, id_veiculo):
+    def abrir_ordem_servico(id_cliente, id_veiculo, pecas=None, servicos=None):
         os_dominio = OrdemServico(id_cliente=id_cliente, id_veiculo=id_veiculo)
 
         query = "INSERT INTO Ordem_Servico (id_cliente, id_veiculo, status) VALUES (?, ?, ?)"
-        return Infrastructure.execute_query(query, (os_dominio.id_cliente, os_dominio.id_veiculo,
-                                                    os_dominio.status))
+        id_os = Infrastructure.execute_query(query, (os_dominio.id_cliente, os_dominio.id_veiculo,
+                                                     os_dominio.status))
+        for p in (pecas or []):
+            OficinaAppService.adicionar_peca(id_os, p['peca'], p['valor_total'])
+        for s in (servicos or []):
+            OficinaAppService.adicionar_servico(id_os, s['servico'], s['valor_total'])
+        return id_os
 
     @staticmethod
     def adicionar_peca(id_os, nome_peca, valor):
@@ -163,7 +168,32 @@ class OficinaAppService:
 
     @staticmethod
     def listar_ordens():
-        return Infrastructure.fetch_pandas("SELECT * FROM Ordem_Servico").to_dict(orient='records')
+        query = """
+            SELECT * FROM Ordem_Servico
+            WHERE status NOT IN ('Finalizada', 'Entregue', 'Recusada')
+            ORDER BY CASE status
+                WHEN 'Em execução' THEN 1
+                WHEN 'Aguardando aprovação' THEN 2
+                WHEN 'Em diagnóstico' THEN 3
+                WHEN 'Recebida' THEN 4
+                ELSE 5
+            END, data_abertura ASC
+        """
+        return Infrastructure.fetch_pandas(query).to_dict(orient='records')
+
+    @staticmethod
+    def aprovar_orcamento(id_os, aprovado):
+        row = Infrastructure.fetch_one("SELECT status FROM Ordem_Servico WHERE id_os = ?", (id_os,))
+        if not row:
+            return {"erro": "OS não encontrada"}
+        if row['status'] != "Aguardando aprovação":
+            return {"erro": f"OS não está aguardando aprovação (status atual: '{row['status']}')"}
+        if aprovado:
+            return OficinaAppService.atualizar_progresso_os(id_os, "Em execução")
+        Infrastructure.execute_query(
+            "UPDATE Ordem_Servico SET status = ? WHERE id_os = ?", ("Recusada", id_os)
+        )
+        return True
 
     @staticmethod
     def tempo_medio_execucao():
