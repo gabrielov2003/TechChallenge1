@@ -9,7 +9,7 @@ O roteiro cobre tudo que o PDF pede para o vídeo: autenticação com CPF, execu
 | Item | Onde pegar |
 |---|---|
 | URL do gateway de prod | Console da AWS (região us-east-2), API Gateway, `oficina-gateway-prod`, campo Invoke URL do stage `$default`. Também está no parâmetro `/oficina/prod/gateway_url` e no link do job `deploy` da última execução da `main` no repositório da Lambda (esse link termina em `/auth`) |
-| Senha do admin de prod | Systems Manager, Parameter Store, `/oficina/prod/admin_password`, Show decrypted value. Não mostre isso no vídeo |
+| Senha do admin de prod | O valor que você definiu no secret `ADMIN_PASSWORD` do repositório da API. Sem esse secret, Systems Manager, Parameter Store, `/oficina/prod/admin_password`, Show decrypted value. Não mostre isso no vídeo |
 | Swagger | `<URL do gateway>/apidocs/`. Confira se abre antes de gravar |
 
 ### 1.2 Abas abertas no navegador
@@ -131,7 +131,7 @@ $joao = api GET /clientes/documento/39053344705 $null $admin
 $carro = api GET /veiculos/placa/ABC1D23 $null $admin
 ```
 
-O que falar: a rota exige token e o login do funcionário gera um JWT de perfil admin. A senha do admin foi gerada pelo Terraform e fica no SSM.
+O que falar: a rota exige token e o login do funcionário gera um JWT de perfil admin. A senha do admin vem de um secret do GitHub Actions (ou do SSM, gerada pelo Terraform) e não fica no código.
 
 ### Bloco 4: autenticação com CPF (04:30 a 06:30)
 

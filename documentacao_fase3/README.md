@@ -44,6 +44,7 @@ Os RFCs e ADRs seguem os modelos da Aula 4 (Propostas Arquiteturais com RFCs e A
 | [diagrama_de_componentes_miro.md](diagrama_de_componentes_miro.md) | Passo a passo para montar o diagrama de componentes no Miro |
 | [roteiro_video.md](roteiro_video.md) | Roteiro do vídeo de 15 minutos, casos de teste, acesso aos logs e ao Datadog |
 | [testes_postman.md](testes_postman.md) | Passo a passo dos testes no Postman: token do admin, autenticação por CPF e rotas protegidas |
+| [datadog_monitoramento.md](datadog_monitoramento.md) | Onde ir no Datadog para mostrar cada requisito de monitoramento |
 
 Os diagramas de componentes e de sequência já estão montados no board do Miro [Oficina Fase 3, diagramas](https://miro.com/app/board/uXjVHn_suZ4=/), prontos para ajustar e exportar.
 

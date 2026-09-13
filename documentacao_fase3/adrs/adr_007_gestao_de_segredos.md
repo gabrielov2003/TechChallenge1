@@ -12,7 +12,7 @@ Os repositórios são públicos. Na Fase 2 os segredos da aplicação (chave do 
 
 Geramos todos os segredos da aplicação com o recurso `random_password` do Terraform. A senha do banco é gerada no repositório `infra_database`. A chave do JWT, o token do webhook e a senha inicial do admin são gerados no repositório `infra_k8s`, um de cada para cada ambiente. Todos os valores ficam no SSM Parameter Store como SecureString.
 
-O pipeline da API lê esses parâmetros, mascara os valores no log do GitHub Actions e cria o Secret do Kubernetes no namespace do ambiente. A Lambda recebe os valores como variáveis de ambiente durante o `terraform apply`. O GitHub guarda apenas as chaves de acesso da AWS e as chaves do Datadog. O arquivo `.env` nunca é versionado, e o `.env.example` contém apenas valores de exemplo.
+O pipeline da API lê esses parâmetros, mascara os valores no log do GitHub Actions e cria o Secret do Kubernetes no namespace do ambiente. A Lambda recebe os valores como variáveis de ambiente durante o `terraform apply`. A senha do admin é a exceção: se o secret `ADMIN_PASSWORD` existir no GitHub, o pipeline usa esse valor no lugar do gerado, e a API atualiza a senha do admin ao subir, o que permite trocá-la sem mexer no Terraform. Fora isso, o GitHub guarda apenas as chaves de acesso da AWS e as chaves do Datadog. O arquivo `.env` nunca é versionado, e o `.env.example` contém apenas valores de exemplo.
 
 ## Consequências
 

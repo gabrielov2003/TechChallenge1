@@ -7,7 +7,7 @@ Guia direto para os testes da gravação, no ambiente `prod` (região us-east-2)
 | Item | Onde pegar |
 |---|---|
 | URL do gateway | Console da AWS, API Gateway, `oficina-gateway-prod`, campo Invoke URL. Também em Systems Manager, Parameter Store, `/oficina/prod/gateway_url` |
-| Senha do admin | Parameter Store, `/oficina/prod/admin_password`, Show decrypted value |
+| Senha do admin | O valor que você definiu no secret `ADMIN_PASSWORD` do repositório da API. Sem esse secret, Parameter Store, `/oficina/prod/admin_password`, Show decrypted value |
 | Token do webhook | Parameter Store, `/oficina/prod/webhook_token`, Show decrypted value. Só é usado no webhook válido, que é opcional |
 
 ## 2. Configuração do Postman (uma vez)
